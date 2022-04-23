@@ -1,6 +1,9 @@
+use clap::Parser;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
-use clap::Parser;
+
+const WORLD_FILE_NAME: &'static str = "words.txt";
+const URL_CHECK: &'static str = "https://www.vaajoor.com/api/check";
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -8,8 +11,81 @@ struct Args {
     #[clap(short, long, default_value_t = 1)]
     day: u32,
 }
-const WORLD_FILE_NAME: &'static str = "words.txt";
-const URL_CHECK: &'static str = "https://www.vaajoor.com/api/check";
+
+#[derive(Debug)]
+struct Character {
+    index: usize,
+    color: Color,
+    value: char,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Color {
+    Red,
+    Yellow,
+    Green,
+}
+
+impl TryFrom<char> for Color {
+    type Error = String;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        use crate::Color::*;
+        match value {
+            'r' => Ok(Red),
+            'g' => Ok(Green),
+            'y' => Ok(Yellow),
+            _ => Err("color not support !".to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct VaagoorResponse {
+    #[serde(alias = "dictionaryError")]
+    error: bool,
+    #[serde(alias = "match")]
+    matchs: [char; 5],
+}
+
+#[derive(Debug)]
+struct Word {
+    characters: [Character; 5],
+}
+
+impl Word {
+    fn new(word: &str, matchs: [char; 5]) -> Word {
+        let chars = matchs
+            .into_iter()
+            .enumerate()
+            .zip(word.chars())
+            .map(|((index, color), value)| Character {
+                index,
+                color: Color::try_from(color).unwrap(),
+                value,
+            })
+            .collect::<Vec<Character>>()
+            .try_into()
+            .unwrap();
+        Word { characters: chars }
+    }
+
+    fn is_solve(&self) -> bool {
+        self.characters.iter().all(|m| m.color == Color::Green)
+    }
+
+    fn is_green(&self, index: usize) -> bool {
+        self.characters
+            .iter()
+            .any(|c| c.color == Color::Green && c.index == index)
+    }
+
+    fn is_before_green(&self, charecter: char) -> bool {
+        self.characters
+            .iter()
+            .any(|m| m.value == charecter && m.color == Color::Green)
+    }
+}
 
 fn main() {
     let args = Args::parse();
@@ -21,7 +97,6 @@ fn main() {
 fn solve(words: Vec<String>, day: &str) -> Result<String, Box<dyn std::error::Error + 'static>> {
     let rand_word = choose_rand_world(&words)?;
     let word = check(&rand_word, day).map(|resp| Word::new(&rand_word, resp.matchs))?;
-    // println!("word => {:?}", word);
     if word.is_solve() {
         Ok(rand_word)
     } else {
@@ -95,79 +170,4 @@ fn check(word: &str, day: &str) -> Result<VaagoorResponse, Box<dyn std::error::E
         .send()?
         .json()?;
     Ok(resp)
-}
-
-#[derive(Debug)]
-pub struct Word {
-    pub characters: [Character; 5],
-}
-
-impl Word {
-    fn new(word: &str, matchs: [char; 5]) -> Word {
-        let chars = matchs
-            .into_iter()
-            .enumerate()
-            .zip(word.chars())
-            .map(|((index, color), value)| Character {
-                index,
-                color: Color::try_from(color).unwrap(),
-                value,
-            })
-            .collect::<Vec<Character>>()
-            .try_into()
-            .unwrap();
-        Word { characters: chars }
-    }
-
-    fn is_solve(&self) -> bool {
-        self.characters.iter().all(|m| m.color == Color::Green)
-    }
-
-    fn is_green(&self, index: usize) -> bool {
-        self.characters
-            .iter()
-            .any(|c| c.color == Color::Green && c.index == index)
-    }
-
-    fn is_before_green(&self, charecter: char) -> bool {
-        self.characters
-            .iter()
-            .any(|m| m.value == charecter && m.color == Color::Green)
-    }
-}
-
-#[derive(Debug)]
-pub struct Character {
-    pub index: usize,
-    pub color: Color,
-    pub value: char,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Color {
-    Red,
-    Yellow,
-    Green,
-}
-
-impl TryFrom<char> for Color {
-    type Error = String;
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        use crate::Color::*;
-        match value {
-            'r' => Ok(Red),
-            'g' => Ok(Green),
-            'y' => Ok(Yellow),
-            _ => Err("color not support !".to_string()),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct VaagoorResponse {
-    #[serde(alias = "dictionaryError")]
-    error: bool,
-    #[serde(alias = "match")]
-    matchs: [char; 5],
 }

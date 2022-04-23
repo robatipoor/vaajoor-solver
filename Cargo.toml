@@ -1,0 +1,18 @@
+[package]
+name = "vaajoor-solver"
+version = "0.1.0"
+edition = "2021"
+authors = ["mahdi robatipoor <mahdi.robatipoor@gmail.com>"]
+description = "vaajoor solver"
+homepage = "https://github.com/robatipoor"
+keywords = ["solver", "vaajoor", "game"]
+license = "MIT"
+repository = "https://github.com/robatipoor"
+include = ["src/**/*", "README.md", "CHANGELOG.md"]
+
+[dependencies]
+reqwest = { version = "0.11", features = ["json","blocking"] }
+serde_json = "1.0.79"
+serde = { version = "1.0.136", features = ["derive"] }
+rand = "0.8.5"
+clap = { version = "3.1.12", features = ["derive"] }

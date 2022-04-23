@@ -72,7 +72,7 @@ impl Word {
     }
 
     fn is_solve(&self) -> bool {
-        self.characters.iter().all(|m| m.color == Color::Green)
+        self.characters.iter().all(|c| c.color == Color::Green)
     }
 
     fn is_green(&self, index: usize) -> bool {
@@ -84,7 +84,7 @@ impl Word {
     fn is_before_green(&self, charecter: char) -> bool {
         self.characters
             .iter()
-            .any(|m| m.value == charecter && m.color == Color::Green)
+            .any(|c| c.value == charecter && c.color == Color::Green)
     }
 }
 

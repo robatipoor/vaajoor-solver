@@ -2,8 +2,8 @@ use clap::Parser;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 
-const WORLD_FILE_NAME: &'static str = "words.txt";
-const URL_CHECK: &'static str = "https://www.vaajoor.com/api/check";
+const WORLD_FILE_NAME: &str = "words.txt";
+const URL_CHECK: &str = "https://www.vaajoor.com/api/check";
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -55,19 +55,20 @@ struct Word {
 
 impl Word {
     fn new(word: &str, matchs: [char; 5]) -> Word {
-        let chars = matchs
-            .into_iter()
-            .enumerate()
-            .zip(word.chars())
-            .map(|((index, color), value)| Character {
-                index,
-                color: Color::try_from(color).unwrap(),
-                value,
-            })
-            .collect::<Vec<Character>>()
-            .try_into()
-            .unwrap();
-        Word { characters: chars }
+        Word {
+            characters: matchs
+                .into_iter()
+                .enumerate()
+                .zip(word.chars())
+                .map(|((index, color), value)| Character {
+                    index,
+                    color: Color::try_from(color).unwrap(),
+                    value,
+                })
+                .collect::<Vec<Character>>()
+                .try_into()
+                .unwrap(),
+        }
     }
 
     fn is_solve(&self) -> bool {
@@ -89,9 +90,10 @@ impl Word {
 
 fn main() {
     let args = Args::parse();
-    let words = read_words(WORLD_FILE_NAME).unwrap();
-    let result = solve(words, &args.day.to_string()).unwrap();
-    println!("solve => {}", result)
+    let result = read_words(WORLD_FILE_NAME)
+        .and_then(|words| solve(words, &args.day.to_string()))
+        .unwrap();
+    println!("answer => {}", result)
 }
 
 fn solve(words: Vec<String>, day: &str) -> Result<String, Box<dyn std::error::Error + 'static>> {
@@ -103,6 +105,7 @@ fn solve(words: Vec<String>, day: &str) -> Result<String, Box<dyn std::error::Er
         solve(remove_items(words, word), day)
     }
 }
+
 fn remove_items(words: Vec<String>, word: Word) -> Vec<String> {
     fn decrease_list(words: Vec<String>, word: Word, index: usize) -> Vec<String> {
         if let Some(c) = word.characters.get(index) {
@@ -152,22 +155,22 @@ fn remove_items(words: Vec<String>, word: Word) -> Vec<String> {
 fn choose_rand_world(words: &Vec<String>) -> Result<String, String> {
     words
         .choose(&mut rand::thread_rng())
-        .map(|s| s.to_string())
+        .map(String::to_string)
         .ok_or_else(|| "list is empty ".to_string())
 }
 
 fn read_words(path: &str) -> Result<Vec<String>, Box<dyn std::error::Error + 'static>> {
     Ok(std::fs::read_to_string(path)?
-        .split("\n")
+        .split('\n')
         .map(|w| w.trim().to_string())
         .collect::<Vec<String>>())
 }
 
 fn check(word: &str, day: &str) -> Result<VaagoorResponse, Box<dyn std::error::Error + 'static>> {
-    let resp = reqwest::blocking::Client::new()
+    reqwest::blocking::Client::new()
         .get(URL_CHECK)
         .query(&[("word", word), ("g", day)])
         .send()?
-        .json()?;
-    Ok(resp)
+        .json()
+        .map_err(|e| e.into())
 }
